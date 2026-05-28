@@ -93,26 +93,6 @@ Or edit your Claude Code MCP config directly:
 
 `env` is optional — omit it if you'd rather use `.env`.
 
-## Try it locally
-
-Once the server is registered, open Claude Code in any project and ask:
-
-> Use bitbucket_mcp to show my current Bitbucket user.
-
-Claude Code will call the `current_user` tool — a good smoke test for
-your credentials. Then try the real workflow:
-
-> On the `kaiquekandykoga/bitbucket_mcp` repo, create a pull request
-> titled "Add foo" from branch `feature/foo` into `main`.
-
-Claude Code will call `create_pull_request` and return the new PR's URL.
-
-Or drive a full review loop end-to-end:
-
-> List my open PRs on `kaiquekandykoga/bitbucket_mcp`, then show the
-> diff of the most recent one and add an inline comment on the first
-> changed line.
-
 ## Available tools
 
 This server implements every endpoint in the Bitbucket Cloud API
