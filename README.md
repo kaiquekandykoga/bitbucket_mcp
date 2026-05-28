@@ -1,38 +1,26 @@
 # Bitbucket MCP
 
-An [MCP](https://modelcontextprotocol.io/) server that exposes nearly
-every endpoint of the [Bitbucket Cloud REST API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/)
-to Claude Code (or any MCP client). It covers
-[Pull Requests](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/)
-(including default reviewers),
-[Repositories](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/),
-[Workspaces](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/),
-[Projects](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-projects/),
-[Commits](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commits/),
-[Refs](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/)
-(branches & tags),
-[Source](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-source/),
-[Branch restrictions](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branch-restrictions/),
-[Branching model](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branching-model/),
-[Commit statuses](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commit-statuses/),
-[Pipelines](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pipelines/),
-[Deployments](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-deployments/),
-[Reports (Code Insights)](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-reports/),
-[Issue tracker](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-issue-tracker/),
-[Webhooks](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-webhooks/),
-[Snippets](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-snippets/),
-[Downloads](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-downloads/),
-[Users](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-users/),
-[SSH](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-ssh/),
-[GPG](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-gpg/),
-and code Search. Claude can list, create, review, comment on, approve,
-merge, and decline pull requests; create and fork repositories; manage
-branches, tags, and branch restrictions; trigger and inspect pipelines;
-manage deployment environments and variables; browse files and history;
-inspect commits, diffs, patches, build statuses, and Code Insights
-reports; manage issues, snippets, deploy keys, downloads, and webhooks;
-and administer workspace projects, members, and permissions on your
-behalf.
+[![CI](https://github.com/kaiquekandykoga/bitbucket_mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaiquekandykoga/bitbucket_mcp/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
+
+An [MCP](https://modelcontextprotocol.io/) server that gives Claude Code
+(or any MCP client) **310 tools** covering nearly every endpoint of the
+[Bitbucket Cloud REST API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/) —
+manage pull requests, repositories, pipelines, deployments, issues,
+branches, snippets, webhooks, and permissions on your behalf.
+
+## Contents
+
+- [Workflow](#workflow)
+- [Coverage](#coverage)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [Connect to Claude Code](#connect-to-claude-code)
+- [Available tools](#available-tools)
+- [Development](#development)
+- [Debugging](#debugging-the-mcp-server)
+- [Project layout](#project-layout)
 
 ## Workflow
 
@@ -41,9 +29,36 @@ behalf.
 3. Claude Code calls the `create_pull_request` tool exposed by this server.
 4. Bitbucket creates the PR; Claude Code returns the URL to you.
 
-Beyond PR creation, Claude Code can also fetch a PR's diff, leave inline
+Beyond PR creation, Claude can also fetch a PR's diff, leave inline
 comments, approve or request changes, merge, and more — see
 [Available tools](#available-tools).
+
+## Coverage
+
+| Group | What's in it |
+|-------|--------------|
+| [Pull requests](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/) | Lifecycle, review, comments, tasks, default reviewers |
+| [Repositories](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/) | CRUD, forks, watchers, group/user permissions, override settings |
+| [Workspaces](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/) | Members, permissions, projects, GPG, webhooks |
+| [Projects](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-projects/) | CRUD, default reviewers, deploy keys, permissions |
+| [Commits](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commits/) | Diffs, patches, comments, approvals, merge-base, file conflicts |
+| [Refs](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/) | Branches & tags |
+| [Source](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-source/) | Browse files, commit via multipart upload |
+| [Branch restrictions](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branch-restrictions/) | Push/merge/delete rules |
+| [Branching model](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branching-model/) | Repo & project-level branching settings |
+| [Commit statuses](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commit-statuses/) | Build status reporting |
+| [Pipelines](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pipelines/) | Run, stop, logs, schedules, variables, caches, runners, OIDC |
+| [Deployments](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-deployments/) | Deploy keys, environments, deployments |
+| [Reports (Code Insights)](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-reports/) | Reports + annotations |
+| [Issue tracker](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-issue-tracker/) | Issues, comments, attachments, votes, watches, milestones, versions, components |
+| [Webhooks](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-webhooks/) | Workspace + repo subscriptions, event types |
+| [Snippets](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-snippets/) | Full lifecycle, comments, revisions, diff/patch |
+| [Downloads](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-downloads/) | Upload, list, download, delete |
+| [Users](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-users/) | Profiles + email management |
+| [SSH](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-ssh/) / [GPG](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-gpg/) | User keys |
+| Search | Workspace + user code search |
+
+**Not included:** [Addon](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-addon/) routes and the JWT-scoped hosted-properties routes, since they require Connect-app auth rather than an email + API token.
 
 ## Requirements
 
@@ -57,7 +72,7 @@ comments, approve or request changes, merge, and more — see
 uv sync
 ```
 
-Set credentials either in a local `.env`:
+Set credentials in a local `.env`:
 
 ```
 BITBUCKET_EMAIL=you@example.com
@@ -95,20 +110,15 @@ Or edit your Claude Code MCP config directly:
 
 ## Available tools
 
-This server implements every endpoint in the Bitbucket Cloud API
-groups listed above (Connect-app-only routes under
-[Addon](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-addon/)
-and the JWT-scoped hosted-properties routes are not exposed, since they
-cannot be called with email + API-token auth). Repository-scoped tools
-take `workspace` and `repository` (the repo slug); most PR tools also
-take `pull_request_id`. Listing tools accept the standard Bitbucket
-`q` / `sort` / `page` / `pagelen` paginators where applicable.
+Repository-scoped tools take `workspace` and `repository` (the repo
+slug); most PR tools also take `pull_request_id`. Listing tools accept
+the standard Bitbucket `q` / `sort` / `page` / `pagelen` paginators where
+applicable. Click any group below to expand its tools.
 
-### Smoke test
+**Smoke test:** `current_user()` — returns the authenticated Bitbucket user.
 
-- **`current_user()`** — Returns the authenticated Bitbucket user.
-
-### Pull requests
+<details>
+<summary><strong>Pull requests</strong> — lifecycle, review, comments, tasks, default reviewers</summary>
 
 #### Lifecycle
 
@@ -157,7 +167,18 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_pull_request_task(workspace, repository, pull_request_id, task_id, content=None, state=None)`** — `state` is `RESOLVED` or `UNRESOLVED`.
 - **`delete_pull_request_task(workspace, repository, pull_request_id, task_id)`**
 
-### Workspaces
+#### Default reviewers
+
+- **`list_default_reviewers(workspace, repository, page=None, pagelen=None)`**
+- **`list_effective_default_reviewers(workspace, repository, page=None, pagelen=None)`** — Includes inherited project-level reviewers.
+- **`get_default_reviewer(workspace, repository, target_username)`**
+- **`add_default_reviewer(workspace, repository, target_username)`**
+- **`remove_default_reviewer(workspace, repository, target_username)`**
+
+</details>
+
+<details>
+<summary><strong>Workspaces</strong> — members, permissions, projects, webhooks, GPG</summary>
 
 - **`list_user_workspaces(sort=None, administrator=None, page=None, pagelen=None)`** — Workspaces accessible to the caller. `sort` accepts only `slug`.
 - **`get_user_workspace_permission(workspace)`** — Caller's effective role on a workspace.
@@ -179,7 +200,37 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_workspace_webhook(workspace, uid, url=None, events=None, description=None, active=None, secret=None)`**
 - **`delete_workspace_webhook(workspace, uid)`**
 
-### Repositories
+</details>
+
+<details>
+<summary><strong>Projects</strong> — CRUD, default reviewers, permissions</summary>
+
+- **`create_workspace_project(workspace, key, name, description=None, is_private=None, avatar=None)`**
+- **`update_workspace_project(workspace, project_key, key=None, name=None, description=None, is_private=None, avatar=None)`**
+- **`delete_workspace_project(workspace, project_key)`**
+
+#### Default reviewers
+
+- **`list_project_default_reviewers(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_default_reviewer(workspace, project_key, selected_user)`**
+- **`add_project_default_reviewer(workspace, project_key, selected_user)`**
+- **`remove_project_default_reviewer(workspace, project_key, selected_user)`**
+
+#### Permissions
+
+- **`list_project_group_permissions(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_group_permission(workspace, project_key, group_slug)`**
+- **`update_project_group_permission(workspace, project_key, group_slug, permission)`** — `permission` is `read`/`write`/`create-repo`/`admin`.
+- **`delete_project_group_permission(workspace, project_key, group_slug)`**
+- **`list_project_user_permissions(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_user_permission(workspace, project_key, selected_user_id)`**
+- **`update_project_user_permission(workspace, project_key, selected_user_id, permission)`**
+- **`delete_project_user_permission(workspace, project_key, selected_user_id)`**
+
+</details>
+
+<details>
+<summary><strong>Repositories</strong> — CRUD, files, forks, permissions, webhooks</summary>
 
 #### Lifecycle
 
@@ -223,7 +274,48 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_repository_webhook(workspace, repository, uid, url=None, events=None, description=None, active=None, secret=None)`**
 - **`delete_repository_webhook(workspace, repository, uid)`**
 
-### Commits
+</details>
+
+<details>
+<summary><strong>Refs (branches & tags)</strong></summary>
+
+- **`list_refs(workspace, repository, q=None, sort=None, page=None, pagelen=None)`** — All refs (branches and tags).
+- **`list_branches(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_branch(workspace, repository, name, target_hash)`**
+- **`get_branch(workspace, repository, name)`**
+- **`delete_branch(workspace, repository, name)`**
+- **`list_tags(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_tag(workspace, repository, name, target_hash, message=None)`**
+- **`get_tag(workspace, repository, name)`**
+- **`delete_tag(workspace, repository, name)`**
+
+</details>
+
+<details>
+<summary><strong>Branch restrictions & branching model</strong></summary>
+
+#### Branch restrictions
+
+- **`list_branch_restrictions(workspace, repository, kind=None, pattern=None, page=None, pagelen=None)`**
+- **`create_branch_restriction(workspace, repository, kind, pattern=None, branch_match_kind=None, branch_type=None, users=None, groups=None, value=None)`**
+- **`get_branch_restriction(workspace, repository, id)`**
+- **`update_branch_restriction(workspace, repository, id, ...)`**
+- **`delete_branch_restriction(workspace, repository, id)`**
+
+#### Branching model
+
+- **`get_branching_model(workspace, repository)`**
+- **`get_effective_branching_model(workspace, repository)`** — After project inheritance.
+- **`get_branching_model_settings(workspace, repository)`**
+- **`update_branching_model_settings(workspace, repository, development=None, production=None, branch_types=None)`**
+- **`get_project_branching_model(workspace, project_key)`**
+- **`get_project_branching_model_settings(workspace, project_key)`**
+- **`update_project_branching_model_settings(workspace, project_key, ...)`**
+
+</details>
+
+<details>
+<summary><strong>Commits</strong> — lookup, diffs, patches, comments, Code Insights, build statuses</summary>
 
 #### Lookup & listing
 
@@ -273,69 +365,10 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`get_commit_build_status(workspace, repository, commit, key)`**
 - **`update_commit_build_status(workspace, repository, commit, key, state=None, url=None, name=None, description=None, refname=None)`**
 
-### Pull request default reviewers
+</details>
 
-- **`list_default_reviewers(workspace, repository, page=None, pagelen=None)`**
-- **`list_effective_default_reviewers(workspace, repository, page=None, pagelen=None)`** — Includes inherited project-level reviewers.
-- **`get_default_reviewer(workspace, repository, target_username)`**
-- **`add_default_reviewer(workspace, repository, target_username)`**
-- **`remove_default_reviewer(workspace, repository, target_username)`**
-
-### Refs (branches & tags)
-
-- **`list_refs(workspace, repository, q=None, sort=None, page=None, pagelen=None)`** — All refs (branches and tags).
-- **`list_branches(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
-- **`create_branch(workspace, repository, name, target_hash)`**
-- **`get_branch(workspace, repository, name)`**
-- **`delete_branch(workspace, repository, name)`**
-- **`list_tags(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
-- **`create_tag(workspace, repository, name, target_hash, message=None)`**
-- **`get_tag(workspace, repository, name)`**
-- **`delete_tag(workspace, repository, name)`**
-
-### Branch restrictions
-
-- **`list_branch_restrictions(workspace, repository, kind=None, pattern=None, page=None, pagelen=None)`**
-- **`create_branch_restriction(workspace, repository, kind, pattern=None, branch_match_kind=None, branch_type=None, users=None, groups=None, value=None)`**
-- **`get_branch_restriction(workspace, repository, id)`**
-- **`update_branch_restriction(workspace, repository, id, ...)`**
-- **`delete_branch_restriction(workspace, repository, id)`**
-
-### Branching model
-
-- **`get_branching_model(workspace, repository)`**
-- **`get_effective_branching_model(workspace, repository)`** — After project inheritance.
-- **`get_branching_model_settings(workspace, repository)`**
-- **`update_branching_model_settings(workspace, repository, development=None, production=None, branch_types=None)`**
-- **`get_project_branching_model(workspace, project_key)`**
-- **`get_project_branching_model_settings(workspace, project_key)`**
-- **`update_project_branching_model_settings(workspace, project_key, ...)`**
-
-### Projects
-
-- **`create_workspace_project(workspace, key, name, description=None, is_private=None, avatar=None)`**
-- **`update_workspace_project(workspace, project_key, key=None, name=None, description=None, is_private=None, avatar=None)`**
-- **`delete_workspace_project(workspace, project_key)`**
-
-#### Project default reviewers
-
-- **`list_project_default_reviewers(workspace, project_key, page=None, pagelen=None)`**
-- **`get_project_default_reviewer(workspace, project_key, selected_user)`**
-- **`add_project_default_reviewer(workspace, project_key, selected_user)`**
-- **`remove_project_default_reviewer(workspace, project_key, selected_user)`**
-
-#### Project permissions
-
-- **`list_project_group_permissions(workspace, project_key, page=None, pagelen=None)`**
-- **`get_project_group_permission(workspace, project_key, group_slug)`**
-- **`update_project_group_permission(workspace, project_key, group_slug, permission)`** — `permission` is `read`/`write`/`create-repo`/`admin`.
-- **`delete_project_group_permission(workspace, project_key, group_slug)`**
-- **`list_project_user_permissions(workspace, project_key, page=None, pagelen=None)`**
-- **`get_project_user_permission(workspace, project_key, selected_user_id)`**
-- **`update_project_user_permission(workspace, project_key, selected_user_id, permission)`**
-- **`delete_project_user_permission(workspace, project_key, selected_user_id)`**
-
-### Pipelines
+<details>
+<summary><strong>Pipelines</strong> — runs, steps, logs, schedules, variables, runners, caches</summary>
 
 #### Lifecycle & inspection
 
@@ -427,7 +460,10 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`get_pipelines_oidc_configuration(workspace)`**
 - **`get_pipelines_oidc_keys(workspace)`**
 
-### Deployments
+</details>
+
+<details>
+<summary><strong>Deployments</strong> — deploy keys, environments, deployments</summary>
 
 #### Deploy keys
 
@@ -451,7 +487,10 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_environment(workspace, repository, environment_uuid, body=None)`** — POSTs to `/changes`.
 - **`delete_environment(workspace, repository, environment_uuid)`**
 
-### Issue tracker
+</details>
+
+<details>
+<summary><strong>Issue tracker</strong> — issues, comments, attachments, changes, votes & watches</summary>
 
 #### Metadata
 
@@ -470,7 +509,7 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_issue(workspace, repository, issue_id, ...)`**
 - **`delete_issue(workspace, repository, issue_id)`**
 
-#### Issue export/import
+#### Export/import
 
 - **`export_issues(workspace, repository)`** — Returns a task descriptor.
 - **`get_issue_export(workspace, repository, repo_name, task_id)`** — Downloads the zip.
@@ -503,14 +542,10 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`get_issue_vote(workspace, repository, issue_id)`** / **`vote_for_issue(...)`** / **`unvote_issue(...)`**
 - **`get_issue_watch(workspace, repository, issue_id)`** / **`watch_issue(...)`** / **`unwatch_issue(...)`**
 
-### Downloads
+</details>
 
-- **`list_downloads(workspace, repository, page=None, pagelen=None)`**
-- **`upload_download(workspace, repository, files)`** — `files` is `{filename: text_content}`.
-- **`get_download(workspace, repository, filename)`**
-- **`delete_download(workspace, repository, filename)`**
-
-### Snippets
+<details>
+<summary><strong>Snippets</strong> — lifecycle, comments, revisions, diffs</summary>
 
 #### Lifecycle
 
@@ -532,7 +567,7 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`list_snippet_commits(workspace, encoded_id, page=None, pagelen=None)`**
 - **`get_snippet_commit(workspace, encoded_id, revision)`**
 
-#### Files, watching, & revisions
+#### Files, watching & revisions
 
 - **`get_snippet_file(workspace, encoded_id, path)`**
 - **`get_snippet_watch(workspace, encoded_id)`** / **`watch_snippet(...)`** / **`unwatch_snippet(...)`**
@@ -544,13 +579,28 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`get_snippet_diff(workspace, encoded_id, revision)`**
 - **`get_snippet_patch(workspace, encoded_id, revision)`**
 
-### Users
+</details>
+
+<details>
+<summary><strong>Downloads</strong></summary>
+
+- **`list_downloads(workspace, repository, page=None, pagelen=None)`**
+- **`upload_download(workspace, repository, files)`** — `files` is `{filename: text_content}`.
+- **`get_download(workspace, repository, filename)`**
+- **`delete_download(workspace, repository, filename)`**
+
+</details>
+
+<details>
+<summary><strong>Users, SSH & GPG keys</strong></summary>
+
+#### Users
 
 - **`get_user(selected_user)`** — Public profile by username, UUID, or Atlassian Account ID.
 - **`list_user_emails(page=None, pagelen=None)`** — Authenticated user's email addresses.
 - **`get_user_email(email)`**
 
-### SSH keys
+#### SSH keys
 
 - **`list_user_ssh_keys(selected_user, page=None, pagelen=None)`**
 - **`create_user_ssh_key(selected_user, key, label=None)`**
@@ -558,37 +608,29 @@ take `pull_request_id`. Listing tools accept the standard Bitbucket
 - **`update_user_ssh_key(selected_user, key_id, label=None, key=None)`**
 - **`delete_user_ssh_key(selected_user, key_id)`**
 
-### GPG keys
+#### GPG keys
 
 - **`list_user_gpg_keys(selected_user, page=None, pagelen=None)`**
 - **`create_user_gpg_key(selected_user, key, name=None)`**
 - **`get_user_gpg_key(selected_user, fingerprint)`**
 - **`delete_user_gpg_key(selected_user, fingerprint)`**
 
-### Webhook event types
+</details>
+
+<details>
+<summary><strong>Webhook event types & search</strong></summary>
+
+#### Webhook event types
 
 - **`list_hook_event_subjects()`** — Subject types that can be subscribed to (workspace, user, repository).
 - **`list_hook_events(subject_type)`** — All event keys for a subject type.
 
-### Search
+#### Search
 
 - **`search_workspace_code(workspace, search_query, page=None, pagelen=None)`**
 - **`search_user_code(selected_user, search_query, page=None, pagelen=None)`**
 
-## Layout
-
-```
-pyproject.toml                          # project config, deps, scripts, ruff, pytest
-src/bitbucket_mcp/
-  __init__.py                           # __version__
-  server.py                             # FastMCP server (entry point)
-  bitbucket/
-    __init__.py
-    client.py                           # Bitbucket Cloud HTTP client (stdlib urllib)
-tests/
-  test_client.py                        # client tests (mocks urllib.request.urlopen)
-  test_server.py                        # server tool tests (mocks the Client)
-```
+</details>
 
 ## Development
 
@@ -604,11 +646,28 @@ Tests mock the HTTP boundary (`urllib.request.urlopen`) and the
 `Client` class, so they're hermetic — no network calls and no real
 Bitbucket credentials needed.
 
-### Debugging the MCP server
+## Debugging the MCP server
 
 Use the official MCP inspector to call tools by hand without going
 through Claude Code:
 
 ```sh
 npx @modelcontextprotocol/inspector /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp
+```
+
+## Project layout
+
+```
+pyproject.toml                          # project config, deps, scripts, ruff, pytest
+src/bitbucket_mcp/
+  __init__.py                           # __version__
+  server.py                             # FastMCP server (entry point)
+  bitbucket/
+    __init__.py
+    client.py                           # Bitbucket Cloud HTTP client (stdlib urllib)
+tests/
+  test_client.py                        # client tests (mocks urllib.request.urlopen)
+  test_server.py                        # server tool tests (mocks the Client)
+.github/workflows/
+  ci.yml                                # lint + format check + pytest matrix
 ```
