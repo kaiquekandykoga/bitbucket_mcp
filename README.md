@@ -1,16 +1,37 @@
 # Bitbucket MCP
 
-An [MCP](https://modelcontextprotocol.io/) server that exposes large
-chunks of the [Bitbucket Cloud REST API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/)
-to Claude Code (or any MCP client). It covers the
-[Pull Requests](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/),
+An [MCP](https://modelcontextprotocol.io/) server that exposes nearly
+every endpoint of the [Bitbucket Cloud REST API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/)
+to Claude Code (or any MCP client). It covers
+[Pull Requests](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/)
+(including default reviewers),
 [Repositories](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/),
 [Workspaces](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/),
-and [Commits](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commits/)
-API groups, so Claude can list, create, review, comment on, approve,
-merge, and decline pull requests; create and fork repositories; browse
-files and history; inspect commits, diffs, patches, and Code Insights
-reports; and manage workspace members, webhooks, and projects on your
+[Projects](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-projects/),
+[Commits](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commits/),
+[Refs](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-refs/)
+(branches & tags),
+[Source](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-source/),
+[Branch restrictions](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branch-restrictions/),
+[Branching model](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-branching-model/),
+[Commit statuses](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commit-statuses/),
+[Pipelines](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pipelines/),
+[Deployments](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-deployments/),
+[Reports (Code Insights)](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-reports/),
+[Issue tracker](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-issue-tracker/),
+[Webhooks](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-webhooks/),
+[Snippets](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-snippets/),
+[Downloads](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-downloads/),
+[Users](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-users/),
+[SSH](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-ssh/),
+[GPG](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-gpg/),
+and code Search. Claude can list, create, review, comment on, approve,
+merge, and decline pull requests; create and fork repositories; manage
+branches, tags, and branch restrictions; trigger and inspect pipelines;
+manage deployment environments and variables; browse files and history;
+inspect commits, diffs, patches, build statuses, and Code Insights
+reports; manage issues, snippets, deploy keys, downloads, and webhooks;
+and administer workspace projects, members, and permissions on your
 behalf.
 
 ## Workflow
@@ -94,15 +115,14 @@ Or drive a full review loop end-to-end:
 
 ## Available tools
 
-This server implements every endpoint in the Bitbucket Cloud
-[Pull Requests](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/),
-[Repositories](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/),
-[Workspaces](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-workspaces/),
-and [Commits](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-commits/)
-API groups. Repository-scoped tools take `workspace` and `repository`
-(the repo slug); most PR tools also take `pull_request_id`. Listing
-tools accept the standard Bitbucket `q` / `sort` / `page` / `pagelen`
-paginators where applicable.
+This server implements every endpoint in the Bitbucket Cloud API
+groups listed above (Connect-app-only routes under
+[Addon](https://developer.atlassian.com/cloud/bitbucket/rest/api-group-addon/)
+and the JWT-scoped hosted-properties routes are not exposed, since they
+cannot be called with email + API-token auth). Repository-scoped tools
+take `workspace` and `repository` (the repo slug); most PR tools also
+take `pull_request_id`. Listing tools accept the standard Bitbucket
+`q` / `sort` / `page` / `pagelen` paginators where applicable.
 
 ### Smoke test
 
@@ -265,6 +285,315 @@ paginators where applicable.
 - **`get_commit_report_annotation(workspace, repository, commit, report_id, annotation_id)`**
 - **`create_or_update_commit_report_annotation(workspace, repository, commit, report_id, annotation_id, external_id=None, annotation_type=None, path=None, line=None, summary=None, details=None, result=None, severity=None, link=None)`** — `annotation_type` is `VULNERABILITY`/`CODE_SMELL`/`BUG`; `severity` is `CRITICAL`/`HIGH`/`MEDIUM`/`LOW`.
 - **`delete_commit_report_annotation(workspace, repository, commit, report_id, annotation_id)`**
+
+#### Build statuses
+
+- **`list_commit_statuses(workspace, repository, commit, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_commit_build_status(workspace, repository, commit, key, state, url, name=None, description=None, refname=None)`** — `state` is `INPROGRESS`/`SUCCESSFUL`/`FAILED`/`STOPPED`.
+- **`get_commit_build_status(workspace, repository, commit, key)`**
+- **`update_commit_build_status(workspace, repository, commit, key, state=None, url=None, name=None, description=None, refname=None)`**
+
+### Pull request default reviewers
+
+- **`list_default_reviewers(workspace, repository, page=None, pagelen=None)`**
+- **`list_effective_default_reviewers(workspace, repository, page=None, pagelen=None)`** — Includes inherited project-level reviewers.
+- **`get_default_reviewer(workspace, repository, target_username)`**
+- **`add_default_reviewer(workspace, repository, target_username)`**
+- **`remove_default_reviewer(workspace, repository, target_username)`**
+
+### Refs (branches & tags)
+
+- **`list_refs(workspace, repository, q=None, sort=None, page=None, pagelen=None)`** — All refs (branches and tags).
+- **`list_branches(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_branch(workspace, repository, name, target_hash)`**
+- **`get_branch(workspace, repository, name)`**
+- **`delete_branch(workspace, repository, name)`**
+- **`list_tags(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_tag(workspace, repository, name, target_hash, message=None)`**
+- **`get_tag(workspace, repository, name)`**
+- **`delete_tag(workspace, repository, name)`**
+
+### Branch restrictions
+
+- **`list_branch_restrictions(workspace, repository, kind=None, pattern=None, page=None, pagelen=None)`**
+- **`create_branch_restriction(workspace, repository, kind, pattern=None, branch_match_kind=None, branch_type=None, users=None, groups=None, value=None)`**
+- **`get_branch_restriction(workspace, repository, id)`**
+- **`update_branch_restriction(workspace, repository, id, ...)`**
+- **`delete_branch_restriction(workspace, repository, id)`**
+
+### Branching model
+
+- **`get_branching_model(workspace, repository)`**
+- **`get_effective_branching_model(workspace, repository)`** — After project inheritance.
+- **`get_branching_model_settings(workspace, repository)`**
+- **`update_branching_model_settings(workspace, repository, development=None, production=None, branch_types=None)`**
+- **`get_project_branching_model(workspace, project_key)`**
+- **`get_project_branching_model_settings(workspace, project_key)`**
+- **`update_project_branching_model_settings(workspace, project_key, ...)`**
+
+### Projects
+
+- **`create_workspace_project(workspace, key, name, description=None, is_private=None, avatar=None)`**
+- **`update_workspace_project(workspace, project_key, key=None, name=None, description=None, is_private=None, avatar=None)`**
+- **`delete_workspace_project(workspace, project_key)`**
+
+#### Project default reviewers
+
+- **`list_project_default_reviewers(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_default_reviewer(workspace, project_key, selected_user)`**
+- **`add_project_default_reviewer(workspace, project_key, selected_user)`**
+- **`remove_project_default_reviewer(workspace, project_key, selected_user)`**
+
+#### Project permissions
+
+- **`list_project_group_permissions(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_group_permission(workspace, project_key, group_slug)`**
+- **`update_project_group_permission(workspace, project_key, group_slug, permission)`** — `permission` is `read`/`write`/`create-repo`/`admin`.
+- **`delete_project_group_permission(workspace, project_key, group_slug)`**
+- **`list_project_user_permissions(workspace, project_key, page=None, pagelen=None)`**
+- **`get_project_user_permission(workspace, project_key, selected_user_id)`**
+- **`update_project_user_permission(workspace, project_key, selected_user_id, permission)`**
+- **`delete_project_user_permission(workspace, project_key, selected_user_id)`**
+
+### Pipelines
+
+#### Lifecycle & inspection
+
+- **`list_pipelines(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_pipeline(workspace, repository, target, variables=None)`** — `target` follows the Pipelines REST schema (e.g. `{"type": "pipeline_ref_target", "ref_type": "branch", "ref_name": "main", "selector": {"type": "default"}}`).
+- **`get_pipeline(workspace, repository, pipeline_uuid)`**
+- **`stop_pipeline(workspace, repository, pipeline_uuid)`**
+
+#### Steps & logs
+
+- **`list_pipeline_steps(workspace, repository, pipeline_uuid, page=None, pagelen=None)`**
+- **`get_pipeline_step(workspace, repository, pipeline_uuid, step_uuid)`**
+- **`get_pipeline_step_log(workspace, repository, pipeline_uuid, step_uuid)`** — Raw text log.
+- **`get_pipeline_step_container_log(workspace, repository, pipeline_uuid, step_uuid, log_uuid)`**
+- **`list_pipeline_step_test_reports(workspace, repository, pipeline_uuid, step_uuid)`**
+- **`list_pipeline_step_test_cases(workspace, repository, pipeline_uuid, step_uuid)`**
+- **`list_pipeline_step_test_case_reasons(workspace, repository, pipeline_uuid, step_uuid, test_case_uuid)`**
+
+#### Configuration
+
+- **`get_pipeline_config(workspace, repository)`**
+- **`update_pipeline_config(workspace, repository, enabled=None, repository_pipeline=None)`**
+- **`update_pipeline_build_number(workspace, repository, next_build_number)`**
+
+#### Schedules
+
+- **`list_pipeline_schedules(workspace, repository, page=None, pagelen=None)`**
+- **`create_pipeline_schedule(workspace, repository, target, cron_pattern, enabled=None)`**
+- **`get_pipeline_schedule(workspace, repository, schedule_uuid)`**
+- **`update_pipeline_schedule(workspace, repository, schedule_uuid, ...)`**
+- **`delete_pipeline_schedule(workspace, repository, schedule_uuid)`**
+- **`list_pipeline_schedule_executions(workspace, repository, schedule_uuid, page=None, pagelen=None)`**
+
+#### SSH
+
+- **`get_pipeline_ssh_key_pair(workspace, repository)`**
+- **`update_pipeline_ssh_key_pair(workspace, repository, public_key, private_key)`**
+- **`delete_pipeline_ssh_key_pair(workspace, repository)`**
+- **`list_pipeline_known_hosts(workspace, repository, page=None, pagelen=None)`**
+- **`create_pipeline_known_host(workspace, repository, hostname, public_key)`** — `public_key` is `{"key": "...", "key_type": "..."}`.
+- **`get_pipeline_known_host(workspace, repository, known_host_uuid)`**
+- **`update_pipeline_known_host(workspace, repository, known_host_uuid, ...)`**
+- **`delete_pipeline_known_host(workspace, repository, known_host_uuid)`**
+
+#### Variables
+
+- **`list_pipeline_variables(workspace, repository, page=None, pagelen=None)`** — Repository-scoped.
+- **`create_pipeline_variable(workspace, repository, key, value, secured=None)`**
+- **`get_pipeline_variable(workspace, repository, variable_uuid)`**
+- **`update_pipeline_variable(workspace, repository, variable_uuid, ...)`**
+- **`delete_pipeline_variable(workspace, repository, variable_uuid)`**
+- **`list_workspace_pipeline_variables(workspace, page=None, pagelen=None)`**
+- **`create_workspace_pipeline_variable(workspace, key, value, secured=None)`**
+- **`get_workspace_pipeline_variable(workspace, variable_uuid)`**
+- **`update_workspace_pipeline_variable(workspace, variable_uuid, ...)`**
+- **`delete_workspace_pipeline_variable(workspace, variable_uuid)`**
+- **`list_user_pipeline_variables(selected_user, page=None, pagelen=None)`**
+- **`create_user_pipeline_variable(selected_user, key, value, secured=None)`**
+- **`get_user_pipeline_variable(selected_user, variable_uuid)`**
+- **`update_user_pipeline_variable(selected_user, variable_uuid, ...)`**
+- **`delete_user_pipeline_variable(selected_user, variable_uuid)`**
+- **`list_deployment_variables(workspace, repository, environment_uuid, page=None, pagelen=None)`**
+- **`create_deployment_variable(workspace, repository, environment_uuid, key, value, secured=None)`**
+- **`update_deployment_variable(workspace, repository, environment_uuid, variable_uuid, ...)`**
+- **`delete_deployment_variable(workspace, repository, environment_uuid, variable_uuid)`**
+
+#### Caches
+
+- **`list_pipeline_caches(workspace, repository, page=None, pagelen=None)`**
+- **`delete_pipeline_caches(workspace, repository, name=None)`** — Delete all caches, optionally filtered by name.
+- **`delete_pipeline_cache(workspace, repository, cache_uuid)`**
+- **`get_pipeline_cache_content_uri(workspace, repository, cache_uuid)`** — Temporary download URI.
+
+#### Runners
+
+- **`list_repository_pipeline_runners(workspace, repository, page=None, pagelen=None)`**
+- **`create_repository_pipeline_runner(workspace, repository, name, labels=None)`**
+- **`get_repository_pipeline_runner(workspace, repository, runner_uuid)`**
+- **`update_repository_pipeline_runner(workspace, repository, runner_uuid, ...)`**
+- **`delete_repository_pipeline_runner(workspace, repository, runner_uuid)`**
+- **`list_workspace_pipeline_runners(workspace, page=None, pagelen=None)`**
+- **`create_workspace_pipeline_runner(workspace, name, labels=None)`**
+- **`get_workspace_pipeline_runner(workspace, runner_uuid)`**
+- **`update_workspace_pipeline_runner(workspace, runner_uuid, ...)`**
+- **`delete_workspace_pipeline_runner(workspace, runner_uuid)`**
+
+#### OIDC
+
+- **`get_pipelines_oidc_configuration(workspace)`**
+- **`get_pipelines_oidc_keys(workspace)`**
+
+### Deployments
+
+#### Deploy keys
+
+- **`list_deploy_keys(workspace, repository, page=None, pagelen=None)`**
+- **`create_deploy_key(workspace, repository, key, label=None)`**
+- **`get_deploy_key(workspace, repository, key_id)`**
+- **`update_deploy_key(workspace, repository, key_id, label=None, key=None)`**
+- **`delete_deploy_key(workspace, repository, key_id)`**
+- **`list_project_deploy_keys(workspace, project_key, page=None, pagelen=None)`**
+- **`create_project_deploy_key(workspace, project_key, key, label=None)`**
+- **`get_project_deploy_key(workspace, project_key, key_id)`**
+- **`delete_project_deploy_key(workspace, project_key, key_id)`**
+
+#### Environments & deployments
+
+- **`list_deployments(workspace, repository, page=None, pagelen=None)`**
+- **`get_deployment(workspace, repository, deployment_uuid)`**
+- **`list_environments(workspace, repository, page=None, pagelen=None)`**
+- **`create_environment(workspace, repository, name, environment_type=None, rank=None)`**
+- **`get_environment(workspace, repository, environment_uuid)`**
+- **`update_environment(workspace, repository, environment_uuid, body=None)`** — POSTs to `/changes`.
+- **`delete_environment(workspace, repository, environment_uuid)`**
+
+### Issue tracker
+
+#### Metadata
+
+- **`list_components(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`get_component(workspace, repository, component_id)`**
+- **`list_milestones(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`get_milestone(workspace, repository, milestone_id)`**
+- **`list_versions(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`get_version(workspace, repository, version_id)`**
+
+#### Issues
+
+- **`list_issues(workspace, repository, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_issue(workspace, repository, title, content=None, kind=None, priority=None, state=None, component=None, milestone=None, version=None, assignee=None)`**
+- **`get_issue(workspace, repository, issue_id)`**
+- **`update_issue(workspace, repository, issue_id, ...)`**
+- **`delete_issue(workspace, repository, issue_id)`**
+
+#### Issue export/import
+
+- **`export_issues(workspace, repository)`** — Returns a task descriptor.
+- **`get_issue_export(workspace, repository, repo_name, task_id)`** — Downloads the zip.
+- **`get_issue_import_status(workspace, repository)`**
+- **`import_issues(workspace, repository)`**
+
+#### Attachments
+
+- **`list_issue_attachments(workspace, repository, issue_id, page=None, pagelen=None)`**
+- **`upload_issue_attachment(workspace, repository, issue_id, files)`** — `files` is `{filename: text_content}`.
+- **`get_issue_attachment(workspace, repository, issue_id, path)`**
+- **`delete_issue_attachment(workspace, repository, issue_id, path)`**
+
+#### Changes
+
+- **`list_issue_changes(workspace, repository, issue_id, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_issue_change(workspace, repository, issue_id, changes=None, message=None)`** — `changes` is `{field: {"new": value}}`.
+- **`get_issue_change(workspace, repository, issue_id, change_id)`**
+
+#### Comments
+
+- **`list_issue_comments(workspace, repository, issue_id, q=None, sort=None, page=None, pagelen=None)`**
+- **`create_issue_comment(workspace, repository, issue_id, content)`**
+- **`get_issue_comment(workspace, repository, issue_id, comment_id)`**
+- **`update_issue_comment(workspace, repository, issue_id, comment_id, content)`**
+- **`delete_issue_comment(workspace, repository, issue_id, comment_id)`**
+
+#### Votes & watches
+
+- **`get_issue_vote(workspace, repository, issue_id)`** / **`vote_for_issue(...)`** / **`unvote_issue(...)`**
+- **`get_issue_watch(workspace, repository, issue_id)`** / **`watch_issue(...)`** / **`unwatch_issue(...)`**
+
+### Downloads
+
+- **`list_downloads(workspace, repository, page=None, pagelen=None)`**
+- **`upload_download(workspace, repository, files)`** — `files` is `{filename: text_content}`.
+- **`get_download(workspace, repository, filename)`**
+- **`delete_download(workspace, repository, filename)`**
+
+### Snippets
+
+#### Lifecycle
+
+- **`list_snippets(role=None, page=None, pagelen=None)`**
+- **`create_snippet(title=None, is_private=None, scm=None, files=None)`** — `files` is `{filename: text_content}`.
+- **`list_workspace_snippets(workspace, role=None, page=None, pagelen=None)`**
+- **`create_workspace_snippet(workspace, title=None, is_private=None, scm=None, files=None)`**
+- **`get_snippet(workspace, encoded_id)`**
+- **`update_snippet(workspace, encoded_id, title=None, is_private=None, files=None)`**
+- **`delete_snippet(workspace, encoded_id)`**
+
+#### Comments & commits
+
+- **`list_snippet_comments(workspace, encoded_id, page=None, pagelen=None)`**
+- **`create_snippet_comment(workspace, encoded_id, content)`**
+- **`get_snippet_comment(workspace, encoded_id, comment_id)`**
+- **`update_snippet_comment(workspace, encoded_id, comment_id, content)`**
+- **`delete_snippet_comment(workspace, encoded_id, comment_id)`**
+- **`list_snippet_commits(workspace, encoded_id, page=None, pagelen=None)`**
+- **`get_snippet_commit(workspace, encoded_id, revision)`**
+
+#### Files, watching, & revisions
+
+- **`get_snippet_file(workspace, encoded_id, path)`**
+- **`get_snippet_watch(workspace, encoded_id)`** / **`watch_snippet(...)`** / **`unwatch_snippet(...)`**
+- **`list_snippet_watchers(workspace, encoded_id, page=None, pagelen=None)`**
+- **`get_snippet_at_revision(workspace, encoded_id, node_id)`**
+- **`update_snippet_at_revision(workspace, encoded_id, node_id, title=None, is_private=None, files=None)`**
+- **`delete_snippet_at_revision(workspace, encoded_id, node_id)`**
+- **`get_snippet_file_at_revision(workspace, encoded_id, node_id, path)`**
+- **`get_snippet_diff(workspace, encoded_id, revision)`**
+- **`get_snippet_patch(workspace, encoded_id, revision)`**
+
+### Users
+
+- **`get_user(selected_user)`** — Public profile by username, UUID, or Atlassian Account ID.
+- **`list_user_emails(page=None, pagelen=None)`** — Authenticated user's email addresses.
+- **`get_user_email(email)`**
+
+### SSH keys
+
+- **`list_user_ssh_keys(selected_user, page=None, pagelen=None)`**
+- **`create_user_ssh_key(selected_user, key, label=None)`**
+- **`get_user_ssh_key(selected_user, key_id)`**
+- **`update_user_ssh_key(selected_user, key_id, label=None, key=None)`**
+- **`delete_user_ssh_key(selected_user, key_id)`**
+
+### GPG keys
+
+- **`list_user_gpg_keys(selected_user, page=None, pagelen=None)`**
+- **`create_user_gpg_key(selected_user, key, name=None)`**
+- **`get_user_gpg_key(selected_user, fingerprint)`**
+- **`delete_user_gpg_key(selected_user, fingerprint)`**
+
+### Webhook event types
+
+- **`list_hook_event_subjects()`** — Subject types that can be subscribed to (workspace, user, repository).
+- **`list_hook_events(subject_type)`** — All event keys for a subject type.
+
+### Search
+
+- **`search_workspace_code(workspace, search_query, page=None, pagelen=None)`**
+- **`search_user_code(selected_user, search_query, page=None, pagelen=None)`**
 
 ## Layout
 
