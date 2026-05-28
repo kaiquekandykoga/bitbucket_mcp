@@ -4,11 +4,13 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
 
-An [MCP](https://modelcontextprotocol.io/) server that gives Claude Code
-(or any MCP client) **310 tools** covering nearly every endpoint of the
-[Bitbucket Cloud REST API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/) —
-manage pull requests, repositories, pipelines, deployments, issues,
-branches, snippets, webhooks, and permissions on your behalf.
+An [MCP](https://modelcontextprotocol.io/) server that exposes **310
+tools** covering nearly every endpoint of the [Bitbucket Cloud REST
+API](https://developer.atlassian.com/cloud/bitbucket/rest/intro/) to
+any MCP-compatible client (Claude Code, Claude Desktop, Cursor, Cline,
+Zed, custom apps built on the MCP SDK, …). Manage pull requests,
+repositories, pipelines, deployments, issues, branches, snippets,
+webhooks, and permissions from your agent of choice.
 
 ## Contents
 
@@ -16,7 +18,7 @@ branches, snippets, webhooks, and permissions on your behalf.
 - [Coverage](#coverage)
 - [Requirements](#requirements)
 - [Setup](#setup)
-- [Connect to Claude Code](#connect-to-claude-code)
+- [Connect to an MCP client](#connect-to-an-mcp-client)
 - [Available tools](#available-tools)
 - [Development](#development)
 - [Debugging](#debugging-the-mcp-server)
@@ -24,12 +26,12 @@ branches, snippets, webhooks, and permissions on your behalf.
 
 ## Workflow
 
-1. You ask Claude Code to make changes (e.g. "write tests for X").
-2. Claude Code edits, commits, and pushes a branch.
-3. Claude Code calls the `create_pull_request` tool exposed by this server.
-4. Bitbucket creates the PR; Claude Code returns the URL to you.
+1. You ask your agent to make changes (e.g. "write tests for X").
+2. The agent edits, commits, and pushes a branch.
+3. The agent calls the `create_pull_request` tool exposed by this server.
+4. Bitbucket creates the PR; the agent returns the URL to you.
 
-Beyond PR creation, Claude can also fetch a PR's diff, leave inline
+Beyond PR creation, agents can also fetch a PR's diff, leave inline
 comments, approve or request changes, merge, and more — see
 [Available tools](#available-tools).
 
@@ -79,18 +81,14 @@ BITBUCKET_EMAIL=you@example.com
 BITBUCKET_API_TOKEN=your_api_token_here
 ```
 
-…or in the Claude Code MCP config (see below). Values from the MCP
+…or in your MCP client's config (see below). Values from the client
 config take precedence over `.env`.
 
-## Connect to Claude Code
+## Connect to an MCP client
 
-Register the server with the Claude Code CLI:
-
-```sh
-claude mcp add bitbucket_mcp /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp
-```
-
-Or edit your Claude Code MCP config directly:
+This server speaks stdio MCP, so it works with any MCP-compatible
+client. The configuration is the same shape everywhere — point the
+client at the installed `bitbucket_mcp` script:
 
 ```json
 {
@@ -107,6 +105,13 @@ Or edit your Claude Code MCP config directly:
 ```
 
 `env` is optional — omit it if you'd rather use `.env`.
+
+Where that block lives depends on the client:
+
+- **Claude Code (CLI):** `claude mcp add bitbucket_mcp /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp`, or edit `~/.claude.json` / a project-level `.mcp.json` directly.
+- **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
+- **Cursor:** `~/.cursor/mcp.json` or a project-level `.cursor/mcp.json`.
+- **Other clients (Cline, Zed, Continue, custom apps via the [MCP SDK](https://modelcontextprotocol.io/quickstart/server)):** consult the client's docs — the JSON block above is what most expect.
 
 ## Available tools
 
@@ -649,7 +654,7 @@ Bitbucket credentials needed.
 ## Debugging the MCP server
 
 Use the official MCP inspector to call tools by hand without going
-through Claude Code:
+through a client:
 
 ```sh
 npx @modelcontextprotocol/inspector /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp

@@ -1,7 +1,7 @@
 [project]
 name = "bitbucket-mcp"
 version = "0.1.0"
-description = "MCP server for creating Bitbucket Cloud pull requests from Claude Code."
+description = "MCP server exposing the Bitbucket Cloud REST API to any MCP-compatible client."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
