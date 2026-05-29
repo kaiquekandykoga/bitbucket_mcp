@@ -26,12 +26,20 @@ def env_credentials(monkeypatch):
 
 @pytest.fixture
 def client():
-    return Client(email="a@b.com", api_token="tok")
+    # Retries disabled so endpoint tests assert exactly one request; retry
+    # behavior is covered explicitly in TestRetries / TestTimeout.
+    return Client(email="a@b.com", api_token="tok", max_retries=0)
 
 
 @pytest.fixture
 def mock_urlopen():
     with patch("bitbucket_mcp.bitbucket.client.urllib.request.urlopen") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_sleep():
+    with patch("bitbucket_mcp.bitbucket.client.time.sleep") as mock:
         yield mock
 
 
@@ -46,12 +54,17 @@ def make_response(body: dict | bytes) -> MagicMock:
     return response
 
 
-def make_http_error(code: int, body: bytes = b"") -> urllib.error.HTTPError:
+def make_http_error(
+    code: int, body: bytes = b"", headers: dict[str, str] | None = None
+) -> urllib.error.HTTPError:
+    hdrs = Message()
+    for key, value in (headers or {}).items():
+        hdrs[key] = value
     error = urllib.error.HTTPError(
         url="http://example.com",
         code=code,
         msg="error",
-        hdrs=Message(),
+        hdrs=hdrs,
         fp=None,
     )
     error.read = lambda: body
@@ -98,6 +111,48 @@ class TestInit:
         monkeypatch.delenv("BITBUCKET_API_TOKEN", raising=False)
         with pytest.raises(ConfigurationError, match="BITBUCKET_API_TOKEN"):
             Client()
+
+    def test_default_timeout_and_retries(self):
+        client = Client(email="a@b.com", api_token="tok")
+        assert client._timeout == 30.0
+        assert client._max_retries == 3
+
+    def test_explicit_timeout_and_retries(self):
+        client = Client(email="a@b.com", api_token="tok", timeout=5.0, max_retries=1)
+        assert client._timeout == 5.0
+        assert client._max_retries == 1
+
+    def test_timeout_and_retries_from_env(self, env_credentials, monkeypatch):
+        monkeypatch.setenv("BITBUCKET_TIMEOUT", "12.5")
+        monkeypatch.setenv("BITBUCKET_MAX_RETRIES", "7")
+        client = Client()
+        assert client._timeout == 12.5
+        assert client._max_retries == 7
+
+    def test_explicit_args_override_env_tuning(self, env_credentials, monkeypatch):
+        monkeypatch.setenv("BITBUCKET_TIMEOUT", "12.5")
+        monkeypatch.setenv("BITBUCKET_MAX_RETRIES", "7")
+        client = Client(timeout=1.0, max_retries=0)
+        assert client._timeout == 1.0
+        assert client._max_retries == 0
+
+    def test_invalid_timeout_env_raises(self, env_credentials, monkeypatch):
+        monkeypatch.setenv("BITBUCKET_TIMEOUT", "soon")
+        with pytest.raises(ConfigurationError, match="BITBUCKET_TIMEOUT"):
+            Client()
+
+    def test_invalid_max_retries_env_raises(self, env_credentials, monkeypatch):
+        monkeypatch.setenv("BITBUCKET_MAX_RETRIES", "lots")
+        with pytest.raises(ConfigurationError, match="BITBUCKET_MAX_RETRIES"):
+            Client()
+
+    def test_non_positive_timeout_raises(self):
+        with pytest.raises(ConfigurationError, match="timeout"):
+            Client(email="a@b.com", api_token="tok", timeout=0)
+
+    def test_negative_max_retries_raises(self):
+        with pytest.raises(ConfigurationError, match="max_retries"):
+            Client(email="a@b.com", api_token="tok", max_retries=-1)
 
 
 class TestCurrentUser:
@@ -770,6 +825,176 @@ class TestErrorMappingOnNewEndpoints:
 
         with pytest.raises(ResponseError, match="HTTP 404"):
             client.get_pull_request(workspace="ws", repository="r", pull_request_id=1)
+
+
+class TestTimeout:
+    def test_default_timeout_passed_to_urlopen(self, client, mock_urlopen):
+        mock_urlopen.return_value = make_response({})
+
+        client.current_user()
+
+        assert mock_urlopen.call_args.kwargs["timeout"] == 30.0
+
+    def test_custom_timeout_passed_to_urlopen(self, mock_urlopen):
+        client = Client(email="a@b.com", api_token="tok", timeout=12.5, max_retries=0)
+        mock_urlopen.return_value = make_response({})
+
+        client.current_user()
+
+        assert mock_urlopen.call_args.kwargs["timeout"] == 12.5
+
+    def test_timeout_error_retried_then_succeeds(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = [TimeoutError("timed out"), make_response({"ok": True})]
+
+        result = client.current_user()
+
+        assert result == {"ok": True}
+        assert mock_urlopen.call_count == 2
+
+    def test_timeout_error_exhausts_retries(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = TimeoutError("timed out")
+
+        with pytest.raises(ResponseError, match="request failed"):
+            client.current_user()
+
+        assert mock_urlopen.call_count == 3
+
+
+class TestRetries:
+    @pytest.mark.parametrize("code", [429, 500, 502, 503, 504])
+    def test_retryable_status_retried_then_succeeds(self, code, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = [make_http_error(code), make_response({"ok": True})]
+
+        result = client.current_user()
+
+        assert result == {"ok": True}
+        assert mock_urlopen.call_count == 2
+
+    def test_exhausts_retries_then_raises(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = make_http_error(503, b"unavailable")
+
+        with pytest.raises(ResponseError, match="HTTP 503"):
+            client.current_user()
+
+        assert mock_urlopen.call_count == 3  # initial attempt + 2 retries
+
+    def test_network_error_retried_then_succeeds(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = [urllib.error.URLError("boom"), make_response({"ok": True})]
+
+        result = client.current_user()
+
+        assert result == {"ok": True}
+        assert mock_urlopen.call_count == 2
+
+    @pytest.mark.parametrize("code", [400, 404, 422])
+    def test_client_errors_not_retried(self, code, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = make_http_error(code, b"nope")
+
+        with pytest.raises(ResponseError, match=f"HTTP {code}"):
+            client.current_user()
+
+        assert mock_urlopen.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_401_not_retried(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = make_http_error(401)
+
+        with pytest.raises(AuthenticationError):
+            client.current_user()
+
+        assert mock_urlopen.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_exponential_backoff_delays(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = make_http_error(503)
+
+        with pytest.raises(ResponseError):
+            client.current_user()
+
+        delays = [call.args[0] for call in mock_sleep.call_args_list]
+        assert delays == [1.0, 2.0, 4.0]
+
+    def test_honors_retry_after_header(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=1)
+        mock_urlopen.side_effect = [
+            make_http_error(429, headers={"Retry-After": "2"}),
+            make_response({"ok": True}),
+        ]
+
+        result = client.current_user()
+
+        assert result == {"ok": True}
+        mock_sleep.assert_called_once_with(2.0)
+
+    def test_retry_after_capped_at_max_delay(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=1)
+        mock_urlopen.side_effect = [
+            make_http_error(503, headers={"Retry-After": "9999"}),
+            make_response({}),
+        ]
+
+        client.current_user()
+
+        mock_sleep.assert_called_once_with(60.0)
+
+    def test_post_not_retried_on_5xx(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = make_http_error(503, b"unavailable")
+
+        with pytest.raises(ResponseError, match="HTTP 503"):
+            client.approve_pull_request(workspace="ws", repository="r", pull_request_id=1)
+
+        assert mock_urlopen.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_post_not_retried_on_network_error(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=3)
+        mock_urlopen.side_effect = urllib.error.URLError("boom")
+
+        with pytest.raises(ResponseError, match="request failed"):
+            client.approve_pull_request(workspace="ws", repository="r", pull_request_id=1)
+
+        assert mock_urlopen.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_post_retried_on_429(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = [make_http_error(429), make_response({"ok": True})]
+
+        result = client.approve_pull_request(workspace="ws", repository="r", pull_request_id=1)
+
+        assert result == {"ok": True}
+        assert mock_urlopen.call_count == 2
+
+    def test_put_retried_on_5xx(self, mock_urlopen, mock_sleep):
+        client = Client(email="a@b.com", api_token="tok", max_retries=2)
+        mock_urlopen.side_effect = [make_http_error(503), make_response({"ok": True})]
+
+        result = client.update_pull_request(
+            workspace="ws", repository="r", pull_request_id=1, title="t"
+        )
+
+        assert result == {"ok": True}
+        assert mock_urlopen.call_count == 2
+
+
+class TestUserAgent:
+    def test_sends_user_agent_header(self, client, mock_urlopen):
+        mock_urlopen.return_value = make_response({})
+
+        client.current_user()
+
+        user_agent = sent_request(mock_urlopen).get_header("User-agent")
+        assert user_agent is not None
+        assert user_agent.startswith("bitbucket-mcp/")
 
 
 # ---------------------------------------------------------------------------

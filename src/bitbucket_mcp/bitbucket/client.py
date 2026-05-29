@@ -3,13 +3,26 @@ from __future__ import annotations
 import base64
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid as _uuid
 from typing import Any
 
+from bitbucket_mcp import __version__
+
 BASE_URL = "https://api.bitbucket.org/2.0"
+
+# Networking defaults. Override via the BITBUCKET_TIMEOUT / BITBUCKET_MAX_RETRIES
+# environment variables, or the Client constructor.
+DEFAULT_TIMEOUT = 30.0
+DEFAULT_MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 1.0
+RETRY_MAX_DELAY = 60.0
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "PUT", "DELETE"})
+USER_AGENT = f"bitbucket-mcp/{__version__}"
 
 
 class BitbucketError(Exception):
@@ -29,7 +42,13 @@ class ResponseError(BitbucketError):
 
 
 class Client:
-    def __init__(self, email: str | None = None, api_token: str | None = None) -> None:
+    def __init__(
+        self,
+        email: str | None = None,
+        api_token: str | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+    ) -> None:
         email = email or os.environ.get("BITBUCKET_EMAIL")
         api_token = api_token or os.environ.get("BITBUCKET_API_TOKEN")
 
@@ -40,6 +59,19 @@ class Client:
 
         self._email = email
         self._api_token = api_token
+        self._timeout = (
+            timeout if timeout is not None else _env_float("BITBUCKET_TIMEOUT", DEFAULT_TIMEOUT)
+        )
+        self._max_retries = (
+            max_retries
+            if max_retries is not None
+            else _env_int("BITBUCKET_MAX_RETRIES", DEFAULT_MAX_RETRIES)
+        )
+
+        if self._timeout <= 0:
+            raise ConfigurationError("timeout must be greater than 0")
+        if self._max_retries < 0:
+            raise ConfigurationError("max_retries must be 0 or greater")
 
     def current_user(self) -> dict[str, Any]:
         return self._request("GET", "/user")
@@ -4863,6 +4895,7 @@ class Client:
         headers = {
             "Authorization": self._basic_auth_header(),
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
         }
         if body is not None:
             data = json.dumps(body).encode()
@@ -4875,22 +4908,32 @@ class Client:
             data = None
         request = urllib.request.Request(url, data=data, headers=headers, method=method)
 
-        try:
-            with urllib.request.urlopen(request) as response:
-                raw = response.read()
-                if text_response:
-                    return raw.decode("utf-8", errors="replace")
-                if not raw:
-                    return {}
-                return json.loads(raw)
-        except urllib.error.HTTPError as exc:
-            if exc.code == 401:
-                raise AuthenticationError(
-                    "Authentication failed (HTTP 401). "
-                    "Check BITBUCKET_EMAIL and BITBUCKET_API_TOKEN."
-                ) from exc
-            body_text = exc.read().decode("utf-8", errors="replace")
-            raise ResponseError(f"Bitbucket API error (HTTP {exc.code}): {body_text}") from exc
+        for attempt in range(self._max_retries + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=self._timeout) as response:
+                    raw = response.read()
+                    if text_response:
+                        return raw.decode("utf-8", errors="replace")
+                    if not raw:
+                        return {}
+                    return json.loads(raw)
+            except urllib.error.HTTPError as exc:
+                if exc.code == 401:
+                    raise AuthenticationError(
+                        "Authentication failed (HTTP 401). "
+                        "Check BITBUCKET_EMAIL and BITBUCKET_API_TOKEN."
+                    ) from exc
+                if attempt < self._max_retries and _should_retry(method, exc):
+                    time.sleep(_retry_delay(attempt, exc))
+                    continue
+                body_text = exc.read().decode("utf-8", errors="replace")
+                raise ResponseError(f"Bitbucket API error (HTTP {exc.code}): {body_text}") from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if attempt < self._max_retries and _should_retry(method, exc):
+                    time.sleep(_retry_delay(attempt, exc))
+                    continue
+                reason = getattr(exc, "reason", exc)
+                raise ResponseError(f"Bitbucket API request failed: {reason}") from exc
 
     def _basic_auth_header(self) -> str:
         token = f"{self._email}:{self._api_token}".encode()
@@ -4899,6 +4942,61 @@ class Client:
 
 def _clean(params: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in params.items() if v is not None}
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ConfigurationError(f"{name} must be a number, got {raw!r}") from exc
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ConfigurationError(f"{name} must be an integer, got {raw!r}") from exc
+
+
+def _should_retry(method: str, exc: Exception) -> bool:
+    """Decide whether a failed request should be retried.
+
+    Reads (and other idempotent methods) retry on any retryable status or
+    network error. Non-idempotent writes (POST) only retry on HTTP 429, where
+    the request was rate-limited and provably not processed, so a retry cannot
+    duplicate the side effect.
+    """
+    if isinstance(exc, urllib.error.HTTPError):
+        if exc.code not in RETRYABLE_STATUS:
+            return False
+        if exc.code == 429:
+            return True
+        return method in IDEMPOTENT_METHODS
+    # Connection/timeout error: outcome is unknown, so only retry idempotent methods.
+    return method in IDEMPOTENT_METHODS
+
+
+def _retry_delay(attempt: int, exc: Exception) -> float:
+    """Seconds to wait before the next attempt (0-indexed)."""
+    retry_after = _parse_retry_after(exc)
+    if retry_after is not None:
+        return min(retry_after, RETRY_MAX_DELAY)
+    return min(RETRY_MAX_DELAY, RETRY_BACKOFF_BASE * (2**attempt))
+
+
+def _parse_retry_after(exc: Exception) -> float | None:
+    """Return the Retry-After header value in seconds, if present and numeric."""
+    if isinstance(exc, urllib.error.HTTPError) and exc.headers is not None:
+        value = exc.headers.get("Retry-After")
+        if value is not None and value.strip().isdigit():
+            return float(value.strip())
+    return None
 
 
 def _build_multipart(

@@ -84,6 +84,22 @@ BITBUCKET_API_TOKEN=your_api_token_here
 …or in your MCP client's config (see below). Values from the client
 config take precedence over `.env`.
 
+### Optional tuning
+
+The HTTP client retries transient failures — HTTP 429 and 5xx, plus
+connection and timeout errors — with exponential backoff, honoring any
+`Retry-After` header. Writes (`POST`) are only retried on a `429`, where the
+request is rejected before any side effect, so a retry can never duplicate
+one. Two optional variables tune this (defaults shown):
+
+```
+BITBUCKET_TIMEOUT=30        # per-request timeout, in seconds
+BITBUCKET_MAX_RETRIES=3     # retry attempts after the first try (0 disables)
+```
+
+They can live in `.env` or in your MCP client's `env` block alongside the
+credentials.
+
 ## Connect to an MCP client
 
 This server speaks stdio MCP, so it works with any MCP-compatible
