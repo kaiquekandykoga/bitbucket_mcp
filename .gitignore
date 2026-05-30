@@ -3,22 +3,16 @@
 .env.local
 .env.*.local
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-build/
-dist/
+# Bundler / build artifacts
+/.bundle/
+/vendor/bundle/
+/pkg/
+/*.gem
 
-# Tooling caches
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
-
-# Virtual environments
-.venv/
-venv/
+# Test & tooling caches
+/coverage/
+/.rspec_status
+/.rubocop-cache/
 
 # IDE / Editor
 .idea/
