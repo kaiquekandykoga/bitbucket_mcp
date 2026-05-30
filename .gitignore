@@ -3,22 +3,19 @@
 .env.local
 .env.*.local
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-build/
-dist/
+# Bundler / build artifacts
+# Gemfile.lock is intentionally not committed: this is a gem, so CI resolves
+# dependencies fresh against each supported Ruby version.
+/Gemfile.lock
+/.bundle/
+/vendor/bundle/
+/pkg/
+/*.gem
 
-# Tooling caches
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
-
-# Virtual environments
-.venv/
-venv/
+# Test & tooling caches
+/coverage/
+/.rspec_status
+/.rubocop-cache/
 
 # IDE / Editor
 .idea/
