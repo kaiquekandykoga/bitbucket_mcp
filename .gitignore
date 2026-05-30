@@ -4,6 +4,9 @@
 .env.*.local
 
 # Bundler / build artifacts
+# Gemfile.lock is intentionally not committed: this is a gem, so CI resolves
+# dependencies fresh against each supported Ruby version.
+/Gemfile.lock
 /.bundle/
 /vendor/bundle/
 /pkg/
