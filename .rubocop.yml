@@ -17,7 +17,7 @@ Layout/LineLength:
   Exclude:
     - "lib/bitbucket_mcp/endpoints/**/*"
     - "lib/bitbucket_mcp/tools/**/*"
-    - "spec/**/*"
+    - "test/**/*"
 
 # Public methods are documented at the module level rather than per-method.
 Style/Documentation:

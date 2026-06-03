@@ -14,7 +14,6 @@
 
 # Test & tooling caches
 /coverage/
-/.rspec_status
 /.rubocop-cache/
 
 # IDE / Editor

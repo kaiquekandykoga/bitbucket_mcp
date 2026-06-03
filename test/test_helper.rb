@@ -1,16 +1,20 @@
 # frozen_string_literal: true
 
+require "json"
+require "stringio"
+
 require "bitbucket_mcp"
-require "webmock/rspec"
+require "test/unit"
+require "webmock/test_unit"
 
 WebMock.disable_net_connect!
 
 # Shared helpers for exercising the client and tools against a stubbed API.
-module SpecHelpers
+module TestHelpers
   API = BitbucketMcp::Client::BASE_URL
 
   # Build a client with fixed credentials. Retries default to 0 so endpoint
-  # specs assert exactly one request; retry behavior is covered separately.
+  # tests assert exactly one request; retry behavior is covered separately.
   def build_client(**opts)
     BitbucketMcp::Client.new(email: "a@b.com", api_token: "tok", max_retries: 0, **opts)
   end
@@ -23,13 +27,13 @@ module SpecHelpers
   end
 
   # Stub a request to `path` (with or without a query string), returning an
-  # empty JSON object. Use together with `a_request(...).with(...)` to assert the
+  # empty JSON object. Use together with `assert_requested(...)` to assert the
   # method, path, query and body a client method produced.
   def stub_call(method, path, status: 200, body: "{}")
     stub_request(method, /\A#{Regexp.escape("#{API}#{path}")}(\?|\z)/).to_return(status: status, body: body)
   end
 
-  # The full URL for a path, for use in `a_request`/`have_requested` assertions.
+  # The full URL for a path, for use in `assert_requested` assertions.
   def api_url(path)
     "#{API}#{path}"
   end
@@ -42,15 +46,25 @@ module SpecHelpers
   ensure
     ENV.replace(original)
   end
-end
 
-RSpec.configure do |config|
-  config.include SpecHelpers
+  # Stub the client's #sleep so retry tests don't actually wait. Returns an
+  # array recording each requested delay, for asserting backoff behavior.
+  def stub_sleep(client)
+    delays = []
+    client.define_singleton_method(:sleep) do |seconds = nil|
+      delays << seconds
+      nil
+    end
+    delays
+  end
 
-  config.expect_with(:rspec) { |c| c.syntax = :expect }
-  config.mock_with(:rspec) { |m| m.verify_partial_doubles = true }
-  config.disable_monkey_patching!
-  config.shared_context_metadata_behavior = :apply_to_host_groups
-  config.order = :random
-  Kernel.srand(config.seed)
+  # Capture everything written to $stdout while the block runs.
+  def capture_stdout
+    original = $stdout
+    $stdout = StringIO.new
+    yield
+    $stdout.string
+  ensure
+    $stdout = original
+  end
 end

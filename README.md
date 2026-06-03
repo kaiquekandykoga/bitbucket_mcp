@@ -682,17 +682,17 @@ optional. Click any group below to expand its tools.
 ## Development
 
 ```sh
-bundle exec rake                        # run the full suite: specs + RuboCop
-bundle exec rspec                       # run all specs
-bundle exec rspec spec/endpoints/pull_requests_spec.rb   # one file
-bundle exec rspec -e "merge"            # only examples matching "merge"
+bundle exec rake                        # run the full suite: tests + RuboCop
+bundle exec rake test                   # run all tests
+bundle exec ruby -Itest test/endpoints/pull_requests_test.rb   # one file
+bundle exec ruby -Itest test/endpoints/pull_requests_test.rb -n "/merge/"   # tests matching "merge"
 bundle exec rubocop                     # lint
 bundle exec rubocop -a                  # lint + safe autocorrect
 ```
 
-Specs stub the HTTP boundary with [WebMock](https://github.com/bblimke/webmock),
-so they're hermetic — no network calls and no real Bitbucket credentials
-needed.
+Tests use [test-unit](https://github.com/test-unit/test-unit) and stub the HTTP
+boundary with [WebMock](https://github.com/bblimke/webmock), so they're
+hermetic — no network calls and no real Bitbucket credentials needed.
 
 ## Debugging the MCP server
 
@@ -711,7 +711,7 @@ usage and the required environment variables.
 ```
 bitbucket_mcp.gemspec                   # gem metadata, deps, executable
 Gemfile / Gemfile.lock                  # bundler
-Rakefile                                # default task: spec + rubocop
+Rakefile                                # default task: test + rubocop
 .rubocop.yml                            # lint config
 exe/bitbucket-mcp                       # executable (runs the stdio server)
 lib/
@@ -725,11 +725,11 @@ lib/
     tool_factory.rb                     # builds an MCP::Tool from a spec
     tools/                              # one module per API area, defines the tools
     server.rb                           # assembles the MCP server, runs stdio
-spec/
-  spec_helper.rb                        # WebMock setup + shared helpers
-  client_spec.rb                        # core HTTP client (config, retries, errors)
-  server_spec.rb                        # tool registration, dispatch, CLI
-  endpoints/                            # per-area request-shape specs
+test/
+  test_helper.rb                        # WebMock setup + shared helpers
+  client_test.rb                        # core HTTP client (config, retries, errors)
+  server_test.rb                        # tool registration, dispatch, CLI
+  endpoints/                            # per-area request-shape tests
 .github/workflows/
-  ci.yml                                # RuboCop + RSpec matrix
+  ci.yml                                # RuboCop + test-unit matrix
 ```
