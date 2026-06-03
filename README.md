@@ -1,7 +1,7 @@
 # Bitbucket MCP
 
 [![CI](https://github.com/kaiquekandykoga/bitbucket_mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaiquekandykoga/bitbucket_mcp/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Ruby](https://img.shields.io/badge/ruby-3.1%2B-CC342D)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green)
 
 An [MCP](https://modelcontextprotocol.io/) server that exposes **310
@@ -64,14 +64,23 @@ comments, approve or request changes, merge, and more — see
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv/) (Python project + env manager)
-- Python 3.10+
-- A Bitbucket Cloud API token (Atlassian API token)
+- Ruby 3.1+
+- [Bundler](https://bundler.io/)
+- A Bitbucket Cloud API token (Atlassian API token — create one at
+  <https://id.atlassian.com/manage-profile/security/api-tokens>)
 
 ## Setup
 
+Install dependencies from a clone:
+
 ```sh
-uv sync
+bundle install
+```
+
+…or install the gem (which puts a `bitbucket-mcp` executable on your `PATH`):
+
+```sh
+gem install bitbucket_mcp
 ```
 
 Set credentials in a local `.env`:
@@ -82,7 +91,8 @@ BITBUCKET_API_TOKEN=your_api_token_here
 ```
 
 …or in your MCP client's config (see below). Values from the client
-config take precedence over `.env`.
+config take precedence over `.env`. A `.env` file is loaded automatically
+when present; credentials passed in the environment work without one.
 
 ### Optional tuning
 
@@ -104,13 +114,13 @@ credentials.
 
 This server speaks stdio MCP, so it works with any MCP-compatible
 client. The configuration is the same shape everywhere — point the
-client at the installed `bitbucket_mcp` script:
+client at the `bitbucket-mcp` executable:
 
 ```json
 {
   "mcpServers": {
     "bitbucket_mcp": {
-      "command": "/path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp",
+      "command": "bitbucket-mcp",
       "env": {
         "BITBUCKET_EMAIL": "you@example.com",
         "BITBUCKET_API_TOKEN": "your_api_token_here"
@@ -120,11 +130,26 @@ client at the installed `bitbucket_mcp` script:
 }
 ```
 
+Use the bare `bitbucket-mcp` if you installed the gem. From a clone, point
+at the checked-out executable and run it through Bundler instead:
+
+```json
+{
+  "mcpServers": {
+    "bitbucket_mcp": {
+      "command": "bundle",
+      "args": ["exec", "bitbucket-mcp"],
+      "cwd": "/path/to/bitbucket_mcp"
+    }
+  }
+}
+```
+
 `env` is optional — omit it if you'd rather use `.env`.
 
 Where that block lives depends on the client:
 
-- **Claude Code (CLI):** `claude mcp add bitbucket_mcp /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp`, or edit `~/.claude.json` / a project-level `.mcp.json` directly.
+- **Claude Code (CLI):** `claude mcp add bitbucket_mcp -- bitbucket-mcp`, or edit `~/.claude.json` / a project-level `.mcp.json` directly.
 - **Claude Desktop:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 - **Cursor:** `~/.cursor/mcp.json` or a project-level `.cursor/mcp.json`.
 - **Other clients (Cline, Zed, Continue, custom apps via the [MCP SDK](https://modelcontextprotocol.io/quickstart/server)):** consult the client's docs — the JSON block above is what most expect.
@@ -134,7 +159,8 @@ Where that block lives depends on the client:
 Repository-scoped tools take `workspace` and `repository` (the repo
 slug); most PR tools also take `pull_request_id`. Listing tools accept
 the standard Bitbucket `q` / `sort` / `page` / `pagelen` paginators where
-applicable. Click any group below to expand its tools.
+applicable. Parameters shown with a default (e.g. `state=None`) are
+optional. Click any group below to expand its tools.
 
 **Smoke test:** `current_user()` — returns the authenticated Bitbucket user.
 
@@ -656,16 +682,17 @@ applicable. Click any group below to expand its tools.
 ## Development
 
 ```sh
-uv run pytest                           # run all tests
-uv run pytest -v                        # verbose: show each test name
-uv run pytest -k pull_request           # only PR-related tests
-uv run ruff check .                     # lint
-uv run ruff format .                    # format
+bundle exec rake                        # run the full suite: specs + RuboCop
+bundle exec rspec                       # run all specs
+bundle exec rspec spec/endpoints/pull_requests_spec.rb   # one file
+bundle exec rspec -e "merge"            # only examples matching "merge"
+bundle exec rubocop                     # lint
+bundle exec rubocop -a                  # lint + safe autocorrect
 ```
 
-Tests mock the HTTP boundary (`urllib.request.urlopen`) and the
-`Client` class, so they're hermetic — no network calls and no real
-Bitbucket credentials needed.
+Specs stub the HTTP boundary with [WebMock](https://github.com/bblimke/webmock),
+so they're hermetic — no network calls and no real Bitbucket credentials
+needed.
 
 ## Debugging the MCP server
 
@@ -673,22 +700,36 @@ Use the official MCP inspector to call tools by hand without going
 through a client:
 
 ```sh
-npx @modelcontextprotocol/inspector /path/to/bitbucket_mcp/.venv/bin/bitbucket_mcp
+npx @modelcontextprotocol/inspector bundle exec bitbucket-mcp
 ```
+
+`bitbucket-mcp --version` prints the version; `bitbucket-mcp --help` prints
+usage and the required environment variables.
 
 ## Project layout
 
 ```
-pyproject.toml                          # project config, deps, scripts, ruff, pytest
-src/bitbucket_mcp/
-  __init__.py                           # __version__
-  server.py                             # FastMCP server (entry point)
-  bitbucket/
-    __init__.py
-    client.py                           # Bitbucket Cloud HTTP client (stdlib urllib)
-tests/
-  test_client.py                        # client tests (mocks urllib.request.urlopen)
-  test_server.py                        # server tool tests (mocks the Client)
+bitbucket_mcp.gemspec                   # gem metadata, deps, executable
+Gemfile / Gemfile.lock                  # bundler
+Rakefile                                # default task: spec + rubocop
+.rubocop.yml                            # lint config
+exe/bitbucket-mcp                       # executable (runs the stdio server)
+lib/
+  bitbucket_mcp.rb                      # entry point (requires everything)
+  bitbucket_mcp/
+    version.rb                          # VERSION
+    errors.rb                           # error hierarchy
+    client.rb                           # Bitbucket Cloud HTTP client (stdlib net/http)
+    endpoints/                          # one module per API area, mixed into Client
+    schema.rb                           # JSON Schema helpers for tool inputs
+    tool_factory.rb                     # builds an MCP::Tool from a spec
+    tools/                              # one module per API area, defines the tools
+    server.rb                           # assembles the MCP server, runs stdio
+spec/
+  spec_helper.rb                        # WebMock setup + shared helpers
+  client_spec.rb                        # core HTTP client (config, retries, errors)
+  server_spec.rb                        # tool registration, dispatch, CLI
+  endpoints/                            # per-area request-shape specs
 .github/workflows/
-  ci.yml                                # lint + format check + pytest matrix
+  ci.yml                                # RuboCop + RSpec matrix
 ```

@@ -1,0 +1,63 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+    - "bin/**/*"
+
+# The endpoint and tool modules are wide, data-definition tables (paths, schemas,
+# descriptions) ported 1:1 from the API. Length/complexity metrics don't add value
+# there, and the tables read best on single lines.
+Metrics:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "lib/bitbucket_mcp/endpoints/**/*"
+    - "lib/bitbucket_mcp/tools/**/*"
+    - "spec/**/*"
+
+# Public methods are documented at the module level rather than per-method.
+Style/Documentation:
+  Enabled: false
+
+# Long, comma-separated `required:` word arrays read fine.
+Style/WordArray:
+  Enabled: true
+
+# This codebase consistently uses double-quoted strings.
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+# Trailing commas on multiline literals/args keep diffs clean.
+Style/TrailingCommaInArguments:
+  EnforcedStyleForMultiline: comma
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+# API-driven parameter names (q, id, to, from) mirror Bitbucket's query params.
+Naming/MethodParameterName:
+  MinNameLength: 1
+
+# Development dependencies are declared in the gemspec by design.
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+# ENV[...] returning nil to fall back to a default is intentional and clear.
+Style/FetchEnvVar:
+  Enabled: false
+
+# Explicit Dir[...].sort documents that load order is deterministic.
+Lint/RedundantDirGlobSort:
+  Enabled: false
+
+# Multipart builders uniformly append fields with `fields << [...]`; some append
+# conditionally, so `each` (not `map`) is the consistent, correct shape.
+Style/MapIntoArray:
+  Enabled: false
