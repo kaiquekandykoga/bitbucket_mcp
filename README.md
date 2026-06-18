@@ -22,7 +22,6 @@ webhooks, and permissions from your agent of choice.
 - [Available tools](#available-tools)
 - [Development](#development)
 - [Debugging](#debugging-the-mcp-server)
-- [Project layout](#project-layout)
 
 ## Workflow
 
@@ -705,31 +704,3 @@ npx @modelcontextprotocol/inspector bundle exec bitbucket-mcp
 
 `bitbucket-mcp --version` prints the version; `bitbucket-mcp --help` prints
 usage and the required environment variables.
-
-## Project layout
-
-```
-bitbucket_mcp.gemspec                   # gem metadata, deps, executable
-Gemfile / Gemfile.lock                  # bundler
-Rakefile                                # default task: test + rubocop
-.rubocop.yml                            # lint config
-exe/bitbucket-mcp                       # executable (runs the stdio server)
-lib/
-  bitbucket_mcp.rb                      # entry point (requires everything)
-  bitbucket_mcp/
-    version.rb                          # VERSION
-    errors.rb                           # error hierarchy
-    client.rb                           # Bitbucket Cloud HTTP client (stdlib net/http)
-    endpoints/                          # one module per API area, mixed into Client
-    schema.rb                           # JSON Schema helpers for tool inputs
-    tool_factory.rb                     # builds an MCP::Tool from a spec
-    tools/                              # one module per API area, defines the tools
-    server.rb                           # assembles the MCP server, runs stdio
-test/
-  test_helper.rb                        # WebMock setup + shared helpers
-  client_test.rb                        # core HTTP client (config, retries, errors)
-  server_test.rb                        # tool registration, dispatch, CLI
-  endpoints/                            # per-area request-shape tests
-.github/workflows/
-  ci.yml                                # RuboCop + test-unit matrix
-```
