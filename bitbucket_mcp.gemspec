@@ -20,8 +20,8 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "#{spec.homepage}/releases"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir["lib/**/*.rb", "exe/*", "README.md", "LICENSE"]
-  spec.bindir = "exe"
+  spec.files = Dir["lib/**/*.rb", "bin/*", "README.md", "LICENSE"]
+  spec.bindir = "bin"
   spec.executables = ["bitbucket-mcp"]
   spec.require_paths = ["lib"]
 

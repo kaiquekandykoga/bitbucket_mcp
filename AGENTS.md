@@ -17,7 +17,7 @@ bundle exec ruby -Itest test/endpoints/pull_requests_test.rb -n "/merge/" # run 
 bundle exec rubocop                                        # lint
 bundle exec rubocop -a                                     # lint + safe autocorrect
 
-bundle exec exe/bitbucket-mcp --version                    # CLI (also --help)
+bundle exec bin/bitbucket-mcp --version                    # CLI (also --help)
 npx @modelcontextprotocol/inspector bundle exec bitbucket-mcp   # drive the server by hand
 ```
 
@@ -38,7 +38,7 @@ Things `request` handles that endpoint methods rely on:
 
 **2. `Tools` + `ToolFactory` + `Schema` (the MCP tool layer).** Each `lib/bitbucket_mcp/tools/<area>.rb` mirrors the matching `endpoints/<area>.rb` file (15 paired areas) and exposes `.all`, an array of `ToolFactory.build(...)` results. `Schema` (`schema.rb`) provides JSON Schema fragment helpers (`str`, `int`, `bool`, `strs`, `array`, `object`, `str_map`) plus shared `WORKSPACE`/`REPOSITORY`/`PAGE`/`PAGELEN` constants. `Tools.all` aggregates every category module's `.all`, sorted by name.
 
-**3. `Server` (the runtime).** `server.rb` builds an `MCP::Server` from `Tools.all` and serves it over stdio; the CLI (`exe/bitbucket-mcp`) handles `--version`/`--help` and otherwise loads `.env` (via `dotenv`, optional) and opens the transport.
+**3. `Server` (the runtime).** `server.rb` builds an `MCP::Server` from `Tools.all` and serves it over stdio; the CLI (`bin/bitbucket-mcp`) handles `--version`/`--help` and otherwise loads `.env` (via `dotenv`, optional) and opens the transport.
 
 **The central invariant: each tool's `name` must equal a `Client` method of the same name.** `ToolFactory.invoke` dispatches every tool call with `Client.new.public_send(name, **args)`. Consequences:
 - Adding a capability = add a method in `endpoints/<area>.rb` **and** a `ToolFactory.build(name: "<same_name>", ...)` in the paired `tools/<area>.rb`, with property names matching the method's keyword args.
