@@ -1,11 +1,6 @@
 AllCops:
   DisabledByDefault: true
   SuggestExtensions: false
-  Exclude:
-    - "hacking/**/*"
-    - "vendor/**/*"
-    - "data/**/*"
-    - "bin/**/*"
 
 Style/StringLiterals:
   Enabled: true
