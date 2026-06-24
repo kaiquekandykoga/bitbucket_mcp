@@ -22,6 +22,7 @@ webhooks, and permissions from your agent of choice.
 - [Available tools](#available-tools)
 - [Development](#development)
 - [Debugging](#debugging-the-mcp-server)
+- [License](#license)
 
 ## Workflow
 
@@ -693,6 +694,9 @@ Tests use [test-unit](https://github.com/test-unit/test-unit) and stub the HTTP
 boundary with [WebMock](https://github.com/bblimke/webmock), so they're
 hermetic — no network calls and no real Bitbucket credentials needed.
 
+See [AGENTS.md](AGENTS.md) for the architecture and the conventions to follow
+when adding tools.
+
 ## Debugging the MCP server
 
 Use the official MCP inspector to call tools by hand without going
@@ -704,3 +708,7 @@ npx @modelcontextprotocol/inspector bundle exec bitbucket-mcp
 
 `bitbucket-mcp --version` prints the version; `bitbucket-mcp --help` prints
 usage and the required environment variables.
+
+## License
+
+[BSD-3-Clause](LICENSE) © 2026 Kaíque Kandy Koga.
