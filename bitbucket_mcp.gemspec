@@ -25,12 +25,12 @@ Gem::Specification.new do |spec|
   spec.executables = ["bitbucket-mcp"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "base64", "~> 0.2"
-  spec.add_dependency "dotenv", "~> 3.0"
-  spec.add_dependency "mcp", "~> 0.1"
+  spec.add_dependency "base64", "~> 0.3"
+  spec.add_dependency "dotenv", "~> 3.2"
+  spec.add_dependency "mcp", "~> 0.21"
 
-  spec.add_development_dependency "rake", "~> 13.0"
-  spec.add_development_dependency "rubocop", "~> 1.60"
-  spec.add_development_dependency "test-unit", "~> 3.6"
-  spec.add_development_dependency "webmock", "~> 3.0"
+  spec.add_development_dependency "rake", "~> 13.4"
+  spec.add_development_dependency "rubocop", "~> 1.88"
+  spec.add_development_dependency "test-unit", "~> 3.7"
+  spec.add_development_dependency "webmock", "~> 3.26"
 end
