@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+`CLAUDE.md` is a symlink to this file — one source of truth; edit `AGENTS.md`, never duplicate it.
 
 `bitbucket_mcp` is a pure-Ruby gem: a Model Context Protocol (MCP) server that exposes the Bitbucket Cloud REST API (v2.0) as 310 tools, runnable by any MCP client over stdio. Runtime dependencies are minimal (`mcp`, `dotenv`, `base64`); the HTTP client is built on stdlib `net/http`.
 
@@ -41,7 +41,7 @@ Things `request` handles that endpoint methods rely on:
 **3. `Server` (the runtime).** `server.rb` builds an `MCP::Server` from `Tools.all` and serves it over stdio; the CLI (`bin/bitbucket-mcp`) handles `--version`/`--help` and otherwise loads `.env` (via `dotenv`, optional) and opens the transport.
 
 **The central invariant: each tool's `name` must equal a `Client` method of the same name.** `ToolFactory.invoke` dispatches every tool call with `Client.new.public_send(name, **args)`. Consequences:
-- Adding a capability = add a method in `endpoints/<area>.rb` **and** a `ToolFactory.build(name: "<same_name>", ...)` in the paired `tools/<area>.rb`, with property names matching the method's keyword args.
+- Adding a capability = add a method in `endpoints/<area>.rb` **and** a `ToolFactory.build(name: "<same_name>", ...)` in the paired `tools/<area>.rb`, with property names matching the method's keyword args. Classify the tool with annotation flags, matching the paired file's existing entries: `read_only: true` for reads (GET), `destructive: true, idempotent: true` for deletes, no flags for creates (POST).
 - Parameter **defaults live only in the client method signature** — tool schemas declare types and `required:`, not defaults.
 - `server_test.rb` enforces this 1:1 mapping (every tool responds to a same-named client method), schema validity, and annotation correctness — run it after touching tools or endpoints.
 
